@@ -23,3 +23,13 @@ def lister_mesures(
     db: Session = Depends(get_db)
 ):
     return lister_mesures_client(db, client_id)
+
+@router.get(
+    "/clients/{client_id}/mesures/derniere",
+    response_model=MesureRead
+)
+def obtenir_derniere_mesure_client(
+    client_id: int,
+    db: Session = Depends(get_db)
+):
+    return obtenir_derniere_mesure(db, client_id)
