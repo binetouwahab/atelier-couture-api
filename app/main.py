@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 
 from app.core.config import settings
-from app.routers import clients, mesures, auth
+from app.routers import clients, mesures, auth, utilisateurs
 
 
 app = FastAPI(
@@ -21,5 +21,10 @@ app.include_router(
 
 app.include_router(
     auth.router,
+    prefix=settings.API_V1_PREFIX
+)
+
+app.include_router(
+    utilisateurs.router,
     prefix=settings.API_V1_PREFIX
 )
