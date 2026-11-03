@@ -44,7 +44,8 @@ def get_utilisateur_connecte(
             detail="Utilisateur introuvable.",
             headers={"WWW-Authenticate": "Bearer"}
         )
-        # Vérifier que le compte est actif
+
+    # Vérifier que le compte est actif
     if not utilisateur.actif:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -53,3 +54,18 @@ def get_utilisateur_connecte(
         )
 
     return utilisateur
+
+def exiger_roles(*roles_autorises: str):
+
+    def verifier_role(
+        utilisateur: Utilisateur = Depends(get_utilisateur_connecte)
+    ):
+        if utilisateur.role not in roles_autorises:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Vous n'avez pas les droits nécessaires."
+            )
+
+        return utilisateur
+
+    return verifier_role
