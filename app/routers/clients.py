@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, Query
+from app.core.dependencies import get_utilisateur_connecte
 from sqlalchemy.orm import Session
 from app.services.client_service import (
     creer_client,
@@ -15,7 +16,8 @@ from app.schemas.client import ClientCreate, ClientRead, ClientUpdate
 
 router = APIRouter(
     prefix="/clients",
-    tags=["Clients"]
+    tags=["Clients"],
+    dependencies=[Depends(get_utilisateur_connecte)]
 )
 
 
