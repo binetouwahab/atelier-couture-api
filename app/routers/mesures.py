@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.schemas.mesure import MesureCreate, MesureRead
+from app.core.dependencies import get_utilisateur_connecte
 
 from app.services.mesure_service import (
     creer_mesure,
@@ -11,7 +12,8 @@ from app.services.mesure_service import (
 )
 
 router = APIRouter(
-    tags=["Mensurations"]
+    tags=["Mensurations"],
+    dependencies=[Depends(get_utilisateur_connecte)]
 )
 
 @router.get(
