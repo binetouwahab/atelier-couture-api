@@ -4,7 +4,8 @@ from app.services.client_service import (
     creer_client,
     obtenir_client,
     lister_clients,
-    modifier_client
+    modifier_client,
+    supprimer_client
 )
 
 
@@ -60,3 +61,15 @@ def modifier_un_client(
     db.refresh(client)
 
     return client
+
+
+@router.delete("/{client_id}")
+def supprimer_un_client(
+    client_id: int,
+    db: Session = Depends(get_db)
+):
+    resultat = supprimer_client(db, client_id)
+
+    db.commit()
+
+    return resultat
