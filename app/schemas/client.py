@@ -1,4 +1,5 @@
 from typing import Literal
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 from datetime import datetime
 import re
 
@@ -51,6 +52,15 @@ class ClientUpdate(BaseModel):
 
         return telephone
 
+    @model_validator(mode="after")
+    def verifier_champs_obligatoires(self):
+        champs_obligatoires = ["nom", "prenom", "telephone"]
+
+        for champ in champs_obligatoires:
+            if champ in self.model_fields_set and getattr(self, champ) is None:
+                raise ValueError(f"Le champ {champ} ne peut pas être vide.")
+
+        return self
 
 class ClientRead(BaseModel):
     id: int
