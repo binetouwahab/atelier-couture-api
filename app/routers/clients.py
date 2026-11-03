@@ -3,13 +3,13 @@ from sqlalchemy.orm import Session
 from app.services.client_service import (
     creer_client,
     obtenir_client,
-    lister_clients
+    lister_clients,
+    modifier_client
 )
 
 
 from app.db.session import get_db
-from app.schemas.client import ClientCreate, ClientRead
-from app.services.client_service import creer_client
+from app.schemas.client import ClientCreate, ClientRead, ClientUpdate
 
 
 router = APIRouter(
@@ -44,3 +44,19 @@ def lister_les_clients(
     db: Session = Depends(get_db)
 ):
     return lister_clients(db, limit, offset)
+
+
+@router.patch("/{client_id}", response_model=ClientRead)
+def modifier_un_client(
+    client_id: int,
+    donnees: ClientUpdate,
+    db: Session = Depends(get_db)
+):
+    modifications = donnees.model_dump(exclude_unset=True)
+
+    client = modifier_client(db, client_id, modifications)
+
+    db.commit()
+    db.refresh(client)
+
+    return client
