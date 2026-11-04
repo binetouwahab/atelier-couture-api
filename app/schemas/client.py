@@ -1,6 +1,6 @@
 from typing import Literal
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
-from datetime import datetime
+from datetime import date, datetime
 import re
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
@@ -75,3 +75,19 @@ class ClientRead(BaseModel):
     updated_at: datetime
 
     model_config =ConfigDict(from_attributes=True) 
+
+class DerniereCommandeRead(BaseModel):
+    id: int
+    numero: str
+    statut: str
+    date_commande: date
+    montant_total: int
+
+
+class ClientResumeRead(BaseModel):
+    nb_commandes: int
+    chiffre_affaires: int
+    total_paye: int
+    solde_du: int
+    derniere_commande: DerniereCommandeRead | None
+    a_des_mesures: bool

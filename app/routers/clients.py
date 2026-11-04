@@ -2,17 +2,20 @@ from fastapi import APIRouter, Depends, Query
 from app.core.dependencies import get_utilisateur_connecte
 from sqlalchemy.orm import Session
 from app.core.dependencies import exiger_roles
+from app.schemas.commande import CommandeClientRead
 from app.services.client_service import (
     creer_client,
     obtenir_client,
     lister_clients,
     modifier_client,
-    supprimer_client
+    supprimer_client,
+    lister_commandes_client,
+    obtenir_resume_client
 )
 
 
 from app.db.session import get_db
-from app.schemas.client import ClientCreate, ClientRead, ClientUpdate
+from app.schemas.client import ClientCreate, ClientRead, ClientUpdate, ClientResumeRead
 
 
 router = APIRouter(
@@ -80,3 +83,27 @@ def supprimer_un_client(
 ):
     supprimer_client(db, client_id)
     db.commit()
+
+@router.get("/{client_id}/commandes")
+def consulter_commandes_client(
+    client_id: int,
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db)
+):
+    return lister_commandes_client(
+        db=db,
+        client_id=client_id,
+        limit=limit,
+        offset=offset
+    )
+
+@router.get("/{client_id}/resume", response_model=ClientResumeRead)
+def consulter_resume_client(
+    client_id: int,
+    db: Session = Depends(get_db)
+):
+    return obtenir_resume_client(
+        db=db,
+        client_id=client_id
+    )

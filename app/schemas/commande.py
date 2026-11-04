@@ -42,3 +42,15 @@ class CommandeRead(BaseModel):
     lignes: list[LigneCommandeRead]
 
     model_config = ConfigDict(from_attributes=True)
+
+class CommandeClientRead(BaseModel):
+    id: int
+    numero: str
+    client_id: int
+    statut: str
+    date_commande: date
+    date_livraison_prevue: date | None
+    montant_total: int
+    montant_paye: int
+
+    model_config = ConfigDict(from_attributes=True)

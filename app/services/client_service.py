@@ -2,7 +2,7 @@ from app.models.commande import Commande
 from app.models.mesure import Mesure
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import or_, select, func
 
 from app.models.client import Client
 from app.schemas.client import ClientCreate
@@ -133,3 +133,106 @@ def supprimer_client(db: Session, client_id: int):
     # Supprimer le client
     db.delete(client)
     db.flush()
+
+
+def lister_commandes_client(
+    db: Session,
+    client_id: int,
+    limit: int = 20,
+    offset: int = 0
+):
+    # Vérifier que le client existe
+    obtenir_client(db, client_id)
+
+    # Compter le nombre total de commandes
+    total = db.scalar(
+        select(func.count())
+        .select_from(Commande)
+        .where(Commande.client_id == client_id)
+    )
+
+    # Récupérer les commandes les plus récentes
+    commandes = db.scalars(
+        select(Commande)
+        .where(Commande.client_id == client_id)
+        .order_by(
+            Commande.date_commande.desc(),
+            Commande.id.desc()
+        )
+        .offset(offset)
+        .limit(limit)
+    ).all()
+
+    return {
+        "items": commandes,
+        "total": total,
+        "limit": limit,
+        "offset": offset
+    }
+
+def obtenir_resume_client(db: Session, client_id: int):
+    # Vérifier que le client existe
+    obtenir_client(db, client_id)
+
+    # Exclure les commandes annulées
+    conditions = (
+        Commande.client_id == client_id,
+        Commande.statut != "annulee"
+    )
+
+    # Compter les commandes non annulées
+    nb_commandes = db.scalar(
+        select(func.count())
+        .select_from(Commande)
+        .where(*conditions)
+    )
+
+    # Calculer le chiffre d'affaires
+    chiffre_affaires = db.scalar(
+        select(func.coalesce(func.sum(Commande.montant_total), 0))
+        .where(*conditions)
+    )
+
+    # Calculer le montant déjà payé
+    total_paye = db.scalar(
+        select(func.coalesce(func.sum(Commande.montant_paye), 0))
+        .where(*conditions)
+    )
+
+    # Calculer le solde restant à payer
+    solde_du = db.scalar(
+        select(
+            func.coalesce(
+                func.sum(Commande.montant_total - Commande.montant_paye),
+                0
+            )
+        )
+        .where(*conditions)
+    )
+
+    # Récupérer la dernière commande du client
+    derniere_commande = db.scalars(
+        select(Commande)
+        .where(Commande.client_id == client_id)
+        .order_by(
+            Commande.date_commande.desc(),
+            Commande.id.desc()
+        )
+        .limit(1)
+    ).first()
+
+    # Vérifier si le client possède des mesures
+    mesure_existante = db.scalar(
+        select(Mesure.id)
+        .where(Mesure.client_id == client_id)
+        .limit(1)
+    )
+
+    return {
+        "nb_commandes": nb_commandes,
+        "chiffre_affaires": chiffre_affaires,
+        "total_paye": total_paye,
+        "solde_du": solde_du,
+        "derniere_commande": derniere_commande,
+        "a_des_mesures": mesure_existante is not None
+    }
