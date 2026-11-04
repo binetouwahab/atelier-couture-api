@@ -24,6 +24,7 @@ from app.schemas.commande import (
     CommandeCreate,
     CommandeUpdate
 )
+from app.schemas.ligne_commande import LigneCommandeCreate
 
 from app.schemas.historique_statut import ChangementStatut
 
@@ -563,3 +564,82 @@ def lister_historique_commande(
 
     # 3. Retourner l'historique
     return historique
+
+def ajouter_ligne_commande(
+    db: Session,
+    commande_id: int,
+    donnees: LigneCommandeCreate
+):
+    # 1. Vérifier que la commande existe
+    commande = db.get(Commande, commande_id)
+
+    if commande is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Commande introuvable."
+        )
+
+    # 2. Vérifier que la commande est encore modifiable
+    if commande.statut != "en_attente":
+        raise HTTPException(
+            status_code=409,
+            detail="Les lignes ne peuvent être modifiées que lorsque la commande est en attente."
+        )
+
+    # 3. Vérifier que la prestation existe
+    prestation = db.get(
+        TypeVetement,
+        donnees.type_vetement_id
+    )
+
+    if prestation is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Prestation introuvable."
+        )
+
+    # 4. Vérifier que la prestation est active
+    if not prestation.actif:
+        raise HTTPException(
+            status_code=422,
+            detail="Cette prestation n'est plus disponible."
+        )
+
+    # 5. Déterminer le prix unitaire
+    prix = (
+        donnees.prix_unitaire
+        if donnees.prix_unitaire is not None
+        else prestation.prix_base
+    )
+
+    # 6. Créer la nouvelle ligne
+    nouvelle_ligne = LigneCommande(
+        commande_id=commande.id,
+        type_vetement_id=prestation.id,
+        description=donnees.description or prestation.nom,
+        quantite=donnees.quantite,
+        prix_unitaire=prix
+    )
+
+    db.add(nouvelle_ligne)
+    db.flush()
+
+    # 7. Recalculer le sous-total de toutes les lignes
+    sous_total = sum(
+        ligne.quantite * ligne.prix_unitaire
+        for ligne in commande.lignes
+    )
+
+    # 8. Calculer le nouveau montant total
+    nouveau_montant_total = sous_total - commande.remise
+
+    # 9. Vérifier que le montant couvre les paiements déjà effectués
+    if nouveau_montant_total < commande.montant_paye:
+        raise HTTPException(
+            status_code=409,
+            detail="Le nouveau montant ne peut pas être inférieur au montant déjà payé."
+        )
+
+    commande.montant_total = nouveau_montant_total
+
+    return nouvelle_ligne

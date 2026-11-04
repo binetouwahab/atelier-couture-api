@@ -23,13 +23,19 @@ from app.schemas.historique_statut import (
     HistoriqueStatutRead
 )
 
+from app.schemas.ligne_commande import (
+    LigneCommandeCreate,
+    LigneCommandeRead
+)
+
 from app.services.commande_service import (
     creer_commande,
     lister_commandes,
     obtenir_commande,
     modifier_commande,
     changer_statut_commande,
-    lister_historique_commande
+    lister_historique_commande,
+    ajouter_ligne_commande
 )
 
 router = APIRouter(
@@ -163,3 +169,26 @@ def afficher_historique_commande(
         db=db,
         commande_id=commande_id
     )
+
+
+@router.post(
+    "/commandes/{commande_id}/lignes",
+    response_model=LigneCommandeRead,
+    status_code=201
+)
+def ajouter_une_ligne(
+    commande_id: int,
+    donnees: LigneCommandeCreate,
+    db: Session = Depends(get_db),
+    utilisateur=Depends(exiger_roles("accueil"))
+):
+    nouvelle_ligne = ajouter_ligne_commande(
+        db=db,
+        commande_id=commande_id,
+        donnees=donnees
+    )
+
+    db.commit()
+    db.refresh(nouvelle_ligne)
+
+    return nouvelle_ligne
