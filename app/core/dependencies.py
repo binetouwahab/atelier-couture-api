@@ -69,3 +69,4 @@ def exiger_roles(*roles_autorises: str):
         return utilisateur
 
     return verifier_role
+
