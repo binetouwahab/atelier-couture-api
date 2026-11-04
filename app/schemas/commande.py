@@ -1,5 +1,7 @@
 from datetime import date, datetime
 from typing import Literal
+from app.schemas.paiement import PaiementRead
+from app.schemas.livraison import LivraisonRead
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -75,3 +77,10 @@ class CommandeListeRead(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class CommandeDetailRead(CommandeRead):
+    paiements: list[PaiementRead]
+    livraison: LivraisonRead | None
+    solde: int
+    en_retard: bool
