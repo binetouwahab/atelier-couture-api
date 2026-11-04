@@ -42,13 +42,19 @@ def consulter_un_client(
 
 @router.get("/")
 def lister_les_clients(
+    q: str | None = Query(default=None, min_length=2),
+    genre: str | None = Query(default=None, pattern="^(homme|femme|enfant)$"),
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db)
 ):
-    return lister_clients(db, limit, offset)
-
-
+    return lister_clients(
+        db=db,
+        limit=limit,
+        offset=offset,
+        q=q,
+        genre=genre
+    )
 @router.patch("/{client_id}", response_model=ClientRead)
 def modifier_un_client(
     client_id: int,

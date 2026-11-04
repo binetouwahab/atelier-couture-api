@@ -2,6 +2,7 @@ from app.models.commande import Commande
 from app.models.mesure import Mesure
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 
 from app.models.client import Client
 from app.schemas.client import ClientCreate
@@ -41,10 +42,42 @@ def obtenir_client(db: Session, client_id: int):
 
     return client
 
-def lister_clients(db: Session, limit: int = 20, offset: int = 0):
-    clients = db.query(Client).offset(offset).limit(limit).all()
+def lister_clients(
+    db: Session,
+    limit: int = 20,
+    offset: int = 0,
+    q: str | None = None,
+    genre: str | None = None
+):
+    requete = db.query(Client)
 
-    total = db.query(Client).count()
+    # Recherche par nom, prénom ou téléphone
+    if q:
+        recherche = f"%{q}%"
+
+        requete = requete.filter(
+            or_(
+                Client.nom.ilike(recherche),
+                Client.prenom.ilike(recherche),
+                Client.telephone.ilike(recherche)
+            )
+        )
+
+    # Filtrer par genre
+    if genre:
+        requete = requete.filter(Client.genre == genre)
+
+    # Compter les clients correspondant aux filtres
+    total = requete.count()
+
+    # Trier par nom puis par prénom et appliquer la pagination
+    clients = (
+        requete
+        .order_by(Client.nom, Client.prenom)
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
 
     return {
         "items": clients,
