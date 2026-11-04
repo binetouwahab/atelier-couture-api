@@ -2,6 +2,7 @@
 from datetime import date, timedelta
 
 from fastapi import HTTPException
+from sqlalchemy import and_, func, select
 from sqlalchemy.orm import Session
 
 from app.models.client import Client
@@ -189,3 +190,103 @@ def creer_commande(
     db.flush()
 
     return nouvelle_commande
+
+
+def lister_commandes(
+    db: Session,
+    statut: str | None = None,
+    client_id: int | None = None,
+    en_retard: bool | None = None,
+    date_min: date | None = None,
+    date_max: date | None = None,
+    numero: str | None = None,
+    limit: int = 20,
+    offset: int = 0
+):
+    # 1. Préparer les filtres
+    filtres = []
+
+    if statut is not None:
+        filtres.append(Commande.statut == statut)
+
+    if client_id is not None:
+        filtres.append(Commande.client_id == client_id)
+
+    if date_min is not None:
+        filtres.append(Commande.date_commande >= date_min)
+
+    if date_max is not None:
+        filtres.append(Commande.date_commande <= date_max)
+
+    if numero is not None:
+        filtres.append(Commande.numero.ilike(f"%{numero}%"))
+
+    # 2. Déterminer si une commande est en retard
+    condition_retard = and_(
+        Commande.date_livraison_prevue < date.today(),
+        Commande.statut.notin_(["livree", "annulee"])
+    )
+
+    if en_retard is True:
+        filtres.append(condition_retard)
+
+    elif en_retard is False:
+        filtres.append(~condition_retard)
+
+    # 3. Compter le nombre total de commandes
+    requete_total = (
+        select(func.count(Commande.id))
+        .where(*filtres)
+    )
+
+    total = db.scalar(requete_total)
+
+    # 4. Récupérer les commandes et leurs clients
+    requete = (
+        select(Commande, Client)
+        .join(Client, Commande.client_id == Client.id)
+        .where(*filtres)
+        .order_by(
+            Commande.date_commande.desc(),
+            Commande.id.desc()
+        )
+        .offset(offset)
+        .limit(limit)
+    )
+
+    resultats = db.execute(requete).all()
+
+    # 5. Préparer les données à retourner
+    items = []
+
+    for commande, client in resultats:
+
+        solde = commande.montant_total - commande.montant_paye
+
+        est_en_retard = (
+            commande.date_livraison_prevue < date.today()
+            and commande.statut not in ["livree", "annulee"]
+        )
+
+        items.append({
+            "id": commande.id,
+            "numero": commande.numero,
+            "client_id": commande.client_id,
+            "client_nom": f"{client.prenom} {client.nom}",
+            "statut": commande.statut,
+            "date_commande": commande.date_commande,
+            "date_livraison_prevue": commande.date_livraison_prevue,
+            "montant_total": commande.montant_total,
+            "montant_paye": commande.montant_paye,
+            "solde": solde,
+            "en_retard": est_en_retard
+        })
+
+    # 6. Retourner les résultats paginés
+    return {
+        "items": items,
+        "total": total,
+        "limit": limit,
+        "offset": offset
+    }
+
