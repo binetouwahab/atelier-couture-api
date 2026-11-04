@@ -1,7 +1,7 @@
 from datetime import date, datetime
 
 from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
@@ -92,3 +92,8 @@ class Commande(Base):
         onupdate=datetime.utcnow,
         nullable=False
     )
+
+    lignes: Mapped[list["LigneCommande"]] = relationship(
+    back_populates="commande",
+    cascade="all, delete-orphan"
+)

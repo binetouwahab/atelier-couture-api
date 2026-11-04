@@ -1,5 +1,5 @@
 from sqlalchemy import ForeignKey, Integer, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
@@ -36,3 +36,6 @@ class LigneCommande(Base):
         Integer,
         nullable=False
     )
+    commande: Mapped["Commande"] = relationship(
+    back_populates="lignes"
+)
