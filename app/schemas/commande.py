@@ -54,3 +54,24 @@ class CommandeClientRead(BaseModel):
     montant_paye: int
 
     model_config = ConfigDict(from_attributes=True)
+
+    
+class CommandeListeItemRead(BaseModel):
+    id: int
+    numero: str
+    client_id: int
+    client_nom: str
+    statut: str
+    date_commande: date
+    date_livraison_prevue: date
+    montant_total: int
+    montant_paye: int
+    solde: int
+    en_retard: bool
+
+
+class CommandeListeRead(BaseModel):
+    items: list[CommandeListeItemRead]
+    total: int
+    limit: int
+    offset: int
