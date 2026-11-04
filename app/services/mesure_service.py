@@ -65,3 +65,16 @@ def obtenir_derniere_mesure(db: Session, client_id: int):
         )
 
     return mesure
+
+
+def obtenir_mesure(db: Session, mesure_id: int):
+    # Rechercher la mensuration par son identifiant
+    mesure = db.get(Mesure, mesure_id)
+
+    if mesure is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Mensuration introuvable."
+        )
+
+    return mesure

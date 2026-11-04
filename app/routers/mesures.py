@@ -10,7 +10,8 @@ from app.core.dependencies import get_utilisateur_connecte
 from app.services.mesure_service import (
     creer_mesure,
     lister_mesures_client,
-    obtenir_derniere_mesure
+    obtenir_derniere_mesure,
+    obtenir_mesure
 )
 
 
@@ -70,3 +71,13 @@ def creer_une_mesure(
     db.refresh(nouvelle_mesure)
 
     return nouvelle_mesure
+
+@router.get(
+    "/mesures/{mesure_id}",
+    response_model=MesureRead
+)
+def consulter_mesure(
+    mesure_id: int,
+    db: Session = Depends(get_db)
+):
+    return obtenir_mesure(db, mesure_id)
