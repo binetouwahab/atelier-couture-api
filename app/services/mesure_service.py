@@ -1,6 +1,6 @@
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
-
+from app.models.commande import Commande
 
 from app.models.mesure import Mesure
 from app.models.client import Client
@@ -107,3 +107,24 @@ def modifier_mesure(db: Session, mesure_id: int, modifications: dict):
     db.flush()
 
     return mesure
+
+def supprimer_mesure(db: Session, mesure_id: int):
+    # Rechercher la mensuration
+    mesure = obtenir_mesure(db, mesure_id)
+
+    # Vérifier si une commande utilise cette mensuration
+    commande_existante = db.query(Commande).filter(
+        Commande.mesure_id == mesure_id
+    ).first()
+
+    if commande_existante:
+        raise HTTPException(
+            status_code=409,
+            detail="Impossible de supprimer cette mensuration car elle est utilisée par une commande."
+        )
+
+    # Supprimer la mensuration
+    db.delete(mesure)
+    db.flush()
+
+    return

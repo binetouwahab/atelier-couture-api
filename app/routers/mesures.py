@@ -13,7 +13,8 @@ from app.services.mesure_service import (
     lister_mesures_client,
     obtenir_derniere_mesure,
     obtenir_mesure,
-    modifier_mesure
+    modifier_mesure,
+    supprimer_mesure
 )
 
 
@@ -106,3 +107,17 @@ def modifier_une_mesure(
     db.refresh(mesure)
 
     return mesure
+
+@router.delete(
+    "/mesures/{mesure_id}",
+    status_code=204
+)
+def supprimer_une_mesure(
+    mesure_id: int,
+    db: Session = Depends(get_db),
+    utilisateur: Utilisateur = Depends(exiger_roles("tailleur"))
+):
+    supprimer_mesure(db, mesure_id)
+    db.commit()
+
+    return
