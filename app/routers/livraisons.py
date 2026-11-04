@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import (
@@ -10,13 +10,15 @@ from app.db.session import get_db
 from app.schemas.livraison import (
     LivraisonCreate,
     LivraisonRead,
-    LivraisonConfirmer
+    LivraisonConfirmer,
+    LivraisonListe
 )
 
 from app.services.livraison_service import (
     planifier_livraison,
     obtenir_livraison_commande,
-    confirmer_livraison
+    confirmer_livraison,
+    lister_livraisons
 )
 
 
@@ -83,3 +85,25 @@ def confirmer_livraison_commande(
     db.refresh(livraison)
 
     return livraison
+
+from app.services.livraison_service import (
+    planifier_livraison,
+    obtenir_livraison_commande,
+    confirmer_livraison,
+    lister_livraisons
+)
+
+@router.get(
+    "/livraisons",
+    response_model=LivraisonListe
+)
+def consulter_toutes_les_livraisons(
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db)
+):
+    return lister_livraisons(
+        db=db,
+        limit=limit,
+        offset=offset
+    )

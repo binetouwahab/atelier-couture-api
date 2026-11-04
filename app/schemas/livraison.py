@@ -52,3 +52,11 @@ class LivraisonRead(BaseModel):
     notes: str | None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+
+class LivraisonListe(BaseModel):
+    items: list[LivraisonRead]
+    total: int
+    limit: int
+    offset: int

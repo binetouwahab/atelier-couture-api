@@ -1,6 +1,9 @@
 
 from datetime import date
 
+from sqlalchemy import func, select
+
+
 from app.models.historique_statut import HistoriqueStatut
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
@@ -185,3 +188,24 @@ def confirmer_livraison(
     db.add(historique)
 
     return livraison
+
+
+
+def lister_livraisons(db: Session, limit: int = 20, offset: int = 0):
+    total = db.scalar(
+        select(func.count()).select_from(Livraison)
+    )
+
+    livraisons = db.scalars(
+        select(Livraison)
+        .order_by(Livraison.id.asc())
+        .offset(offset)
+        .limit(limit)
+    ).all()
+
+    return {
+        "items": livraisons,
+        "total": total,
+        "limit": limit,
+        "offset": offset
+    }
