@@ -1,10 +1,10 @@
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+
 from app.models.mesure import Mesure
 from app.models.client import Client
-from app.schemas.mesure import MesureCreate
-
+from app.schemas.mesure import MesureCreate, MesureUpdate
 def creer_mesure(db: Session, donnees: MesureCreate, prise_par_id: int):
     # Vérifier que le client existe
     client = db.get(Client, donnees.client_id)
@@ -76,5 +76,34 @@ def obtenir_mesure(db: Session, mesure_id: int):
             status_code=404,
             detail="Mensuration introuvable."
         )
+
+    return mesure
+
+
+def modifier_mesure(db: Session, mesure_id: int, modifications: dict):
+    # Rechercher la mensuration
+    mesure = obtenir_mesure(db, mesure_id)
+
+    # Appliquer uniquement les champs transmis
+    for champ, valeur in modifications.items():
+        setattr(mesure, champ, valeur)
+
+    # Vérifier qu'au moins une mensuration reste renseignée
+    champs_mensurations = [
+        "taille_cm", "tour_cou", "carrure_dos",
+        "longueur_epaule", "tour_poitrine", "tour_taille",
+        "tour_bassin", "longueur_manche", "tour_bras",
+        "tour_poignet", "longueur_dos", "longueur_haut",
+        "longueur_pantalon", "tour_cuisse", "tour_genou",
+        "bas_pantalon", "entrejambe", "longueur_robe"
+    ]
+
+    if not any(getattr(mesure, champ) is not None for champ in champs_mensurations):
+        raise HTTPException(
+            status_code=422,
+            detail="Au moins une mensuration doit être renseignée."
+        )
+
+    db.flush()
 
     return mesure

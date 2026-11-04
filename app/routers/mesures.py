@@ -2,16 +2,18 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
+
 from app.models.utilisateur import Utilisateur
 from app.db.session import get_db
-from app.schemas.mesure import MesureCreate, MesureRead
-from app.core.dependencies import get_utilisateur_connecte
+from app.schemas.mesure import MesureCreate, MesureUpdate, MesureRead
+from app.core.dependencies import get_utilisateur_connecte, exiger_roles
 
 from app.services.mesure_service import (
     creer_mesure,
     lister_mesures_client,
     obtenir_derniere_mesure,
-    obtenir_mesure
+    obtenir_mesure,
+    modifier_mesure
 )
 
 
@@ -81,3 +83,26 @@ def consulter_mesure(
     db: Session = Depends(get_db)
 ):
     return obtenir_mesure(db, mesure_id)
+
+@router.patch(
+    "/mesures/{mesure_id}",
+    response_model=MesureRead
+)
+def modifier_une_mesure(
+    mesure_id: int,
+    donnees: MesureUpdate,
+    db: Session = Depends(get_db),
+    utilisateur: Utilisateur = Depends(exiger_roles("tailleur"))
+):
+    modifications = donnees.model_dump(exclude_unset=True)
+
+    mesure = modifier_mesure(
+        db,
+        mesure_id,
+        modifications
+    )
+
+    db.commit()
+    db.refresh(mesure)
+
+    return mesure
