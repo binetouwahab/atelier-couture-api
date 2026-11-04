@@ -18,14 +18,18 @@ from app.schemas.commande import (
     CommandeDetailRead
 )
 
-from app.schemas.historique_statut import ChangementStatut
+from app.schemas.historique_statut import (
+    ChangementStatut,
+    HistoriqueStatutRead
+)
 
 from app.services.commande_service import (
     creer_commande,
     lister_commandes,
     obtenir_commande,
     modifier_commande,
-    changer_statut_commande
+    changer_statut_commande,
+    lister_historique_commande
 )
 
 router = APIRouter(
@@ -145,3 +149,17 @@ def changer_statut(
     db.refresh(commande_modifiee)
 
     return commande_modifiee
+
+
+@router.get(
+    "/commandes/{commande_id}/historique",
+    response_model=list[HistoriqueStatutRead]
+)
+def afficher_historique_commande(
+    commande_id: int,
+    db: Session = Depends(get_db)
+):
+    return lister_historique_commande(
+        db=db,
+        commande_id=commande_id
+    )
