@@ -1,4 +1,5 @@
-
+from app.models.ligne_commande import LigneCommande
+from app.models.type_vetement import TypeVetement
 from datetime import date
 from fastapi import HTTPException
 
@@ -233,4 +234,62 @@ def obtenir_chiffre_affaires(
             for periode in sorted(donnees)
         ]
     }
-    
+
+def obtenir_statistiques_types_vetement(
+    db: Session,
+    date_debut: date | None = None,
+    date_fin: date | None = None
+):
+    aujourd_hui = date.today()
+
+    if date_fin is None:
+        date_fin = aujourd_hui
+
+    if date_debut is None:
+        date_debut = aujourd_hui.replace(day=1)
+
+    if date_debut > date_fin:
+        raise HTTPException(
+            status_code=422,
+            detail="La date de début ne peut pas être supérieure à la date de fin."
+        )
+
+    resultats = db.execute(
+        select(
+            TypeVetement.nom.label("type_vetement"),
+            func.sum(LigneCommande.quantite).label("quantite_vendue"),
+            func.sum(
+                LigneCommande.quantite * LigneCommande.prix_unitaire
+            ).label("chiffre_affaires")
+        ).join(
+            LigneCommande,
+            LigneCommande.type_vetement_id == TypeVetement.id
+        ).join(
+            Commande,
+            Commande.id == LigneCommande.commande_id
+        ).where(
+            Commande.date_commande >= date_debut,
+            Commande.date_commande <= date_fin,
+            Commande.statut != "annulee"
+        ).group_by(
+            TypeVetement.id,
+            TypeVetement.nom
+        ).order_by(
+            func.sum(
+                LigneCommande.quantite * LigneCommande.prix_unitaire
+            ).desc()
+        )
+    ).all()    
+
+    return {
+        "date_debut": date_debut,
+        "date_fin": date_fin,
+        "items": [
+            {
+                "type_vetement": resultat.type_vetement,
+                "quantite_vendue": resultat.quantite_vendue,
+                "chiffre_affaires": resultat.chiffre_affaires
+            }
+            for resultat in resultats
+        ]
+    }

@@ -13,7 +13,8 @@ from app.core.dependencies import (
 
 from app.services.statistique_service import (
     obtenir_tableau_de_bord,
-    obtenir_chiffre_affaires
+    obtenir_chiffre_affaires,
+    obtenir_statistiques_types_vetement
 )
 
 
@@ -47,6 +48,21 @@ def consulter_chiffre_affaires(
     return obtenir_chiffre_affaires(
         db=db,
         granularite=granularite,
+        date_debut=date_debut,
+        date_fin=date_fin
+    )
+
+@router.get(
+    "/statistiques/typesvetement"
+)
+def consulter_statistiques_types_vetement(
+    date_debut: date | None = None,
+    date_fin: date | None = None,
+    db: Session = Depends(get_db),
+    utilisateur=Depends(exiger_roles("admin"))
+):
+    return obtenir_statistiques_types_vetement(
+        db=db,
         date_debut=date_debut,
         date_fin=date_fin
     )
