@@ -13,11 +13,14 @@ from app.models.ligne_commande import LigneCommande
 from app.models.historique_statut import HistoriqueStatut
 from app.models.paiement import Paiement
 from app.models.livraison import Livraison
+from app.models.utilisateur import Utilisateur
 
 from app.schemas.commande import (
     CommandeCreate,
     CommandeUpdate
 )
+
+from app.schemas.historique_statut import ChangementStatut
 
 def creer_commande(
     db: Session,
@@ -452,5 +455,79 @@ def modifier_commande(
     # 7. Modifier les notes, si elles sont fournies
     if "notes" in modifications:
         commande.notes = modifications["notes"]
+
+    return commande
+
+
+def changer_statut_commande(
+    db: Session,
+    commande_id: int,
+    donnees: ChangementStatut,
+    utilisateur: Utilisateur
+):
+    # 1. Rechercher la commande
+    commande = db.get(Commande, commande_id)
+
+    if commande is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Commande introuvable."
+        )
+
+    # 2. Définir les transitions autorisées
+    transitions_autorisees = {
+        "en_attente": ["en_coupe", "annulee"],
+        "en_coupe": ["en_couture", "annulee"],
+        "en_couture": ["essayage", "terminee", "annulee"],
+        "essayage": ["retouches", "terminee", "annulee"],
+        "retouches": ["essayage", "terminee", "annulee"],
+        "terminee": [],
+        "livree": [],
+        "annulee": []
+    }
+
+    ancien_statut = commande.statut
+    nouveau_statut = donnees.nouveau_statut
+
+    # 3. Vérifier que le changement est autorisé
+    statuts_possibles = transitions_autorisees.get(
+        ancien_statut,
+        []
+    )
+
+    if nouveau_statut not in statuts_possibles:
+        raise HTTPException(
+            status_code=409,
+            detail="Ce changement de statut n'est pas autorisé."
+        )
+
+    # 4. Empêcher le tailleur d'annuler une commande
+    if nouveau_statut == "annulee" and utilisateur.role == "tailleur":
+        raise HTTPException(
+            status_code=403,
+            detail="Un tailleur ne peut pas annuler une commande."
+        )
+
+    # 5. Vérifier le commentaire en cas d'acompte
+    if nouveau_statut == "annulee" and commande.montant_paye > 0:
+        if not donnees.commentaire or not donnees.commentaire.strip():
+            raise HTTPException(
+                status_code=422,
+                detail="Un commentaire expliquant le remboursement ou l'avoir est obligatoire."
+            )
+
+    # 6. Modifier le statut
+    commande.statut = nouveau_statut
+
+    # 7. Enregistrer le changement dans l'historique
+    historique = HistoriqueStatut(
+        commande_id=commande.id,
+        ancien_statut=ancien_statut,
+        nouveau_statut=nouveau_statut,
+        commentaire=donnees.commentaire,
+        utilisateur_id=utilisateur.id
+    )
+
+    db.add(historique)
 
     return commande

@@ -18,11 +18,14 @@ from app.schemas.commande import (
     CommandeDetailRead
 )
 
+from app.schemas.historique_statut import ChangementStatut
+
 from app.services.commande_service import (
     creer_commande,
     lister_commandes,
     obtenir_commande,
-    modifier_commande
+    modifier_commande,
+    changer_statut_commande
 )
 
 router = APIRouter(
@@ -113,6 +116,29 @@ def modifier_une_commande(
         db=db,
         commande_id=commande_id,
         modifications=modifications
+    )
+
+    db.commit()
+    db.refresh(commande_modifiee)
+
+    return commande_modifiee
+
+
+@router.post(
+    "/commandes/{commande_id}/statut",
+    response_model=CommandeRead
+)
+def changer_statut(
+    commande_id: int,
+    donnees: ChangementStatut,
+    db: Session = Depends(get_db),
+    utilisateur=Depends(get_utilisateur_connecte)
+):
+    commande_modifiee = changer_statut_commande(
+        db=db,
+        commande_id=commande_id,
+        donnees=donnees,
+        utilisateur=utilisateur
     )
 
     db.commit()
