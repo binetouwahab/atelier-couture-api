@@ -5,7 +5,6 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class LivraisonCreate(BaseModel):
-    commande_id: int = Field(gt=0)
     mode: Literal["retrait_atelier", "domicile"]
     adresse: str | None = None
     livreur: str | None = None
@@ -25,6 +24,13 @@ class LivraisonUpdate(BaseModel):
     livreur: str | None = None
     date_prevue: date | None = None
     notes: str | None = None
+@model_validator(mode="after")
+def verifier_adresse(self):
+    if self.mode == "domicile" and not self.adresse:
+        raise ValueError(
+            "Une adresse est obligatoire pour une livraison à domicile."
+        )
+    return self
 
 
 class LivraisonRead(BaseModel):
