@@ -6,6 +6,10 @@ from app.core.dependencies import get_utilisateur_connecte, exiger_roles
 from app.db.session import get_db
 from app.schemas.livraison import LivraisonCreate, LivraisonRead
 from app.services.livraison_service import planifier_livraison
+from app.services.livraison_service import (
+    planifier_livraison,
+    obtenir_livraison_commande
+)
 
 
 router = APIRouter(
@@ -35,3 +39,16 @@ def creer_ou_modifier_livraison(
 
     return livraison
 
+
+@router.get(
+    "/commandes/{commande_id}/livraison",
+    response_model=LivraisonRead
+)
+def consulter_livraison_commande(
+    commande_id: int,
+    db: Session = Depends(get_db)
+):
+    return obtenir_livraison_commande(
+        db=db,
+        commande_id=commande_id
+    )

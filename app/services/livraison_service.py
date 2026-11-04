@@ -69,3 +69,33 @@ def planifier_livraison(
     commande.date_livraison_prevue = date_prevue
 
     return livraison
+
+
+def obtenir_livraison_commande(
+    db: Session,
+    commande_id: int
+):
+    # 1. Vérifier que la commande existe
+    commande = db.get(Commande, commande_id)
+
+    if commande is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Commande introuvable."
+        )
+
+    # 2. Rechercher la livraison de cette commande
+    livraison = (
+        db.query(Livraison)
+        .filter(Livraison.commande_id == commande_id)
+        .first()
+    )
+
+    # 3. Vérifier qu'une livraison existe
+    if livraison is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Aucune livraison n'est enregistrée pour cette commande."
+        )
+
+    return livraison
