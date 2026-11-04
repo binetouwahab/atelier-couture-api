@@ -643,3 +643,63 @@ def ajouter_ligne_commande(
     commande.montant_total = nouveau_montant_total
 
     return nouvelle_ligne
+
+def supprimer_ligne_commande(
+    db: Session,
+    commande_id: int,
+    ligne_id: int
+):
+    # 1. Vérifier que la commande existe
+    commande = db.get(Commande, commande_id)
+
+    if commande is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Commande introuvable."
+        )
+
+    # 2. Vérifier que la commande est encore modifiable
+    if commande.statut != "en_attente":
+        raise HTTPException(
+            status_code=409,
+            detail="Les lignes ne peuvent être modifiées que lorsque la commande est en attente."
+        )
+
+    # 3. Rechercher la ligne dans cette commande
+    ligne = db.get(LigneCommande, ligne_id)
+
+    if ligne is None or ligne.commande_id != commande_id:
+        raise HTTPException(
+            status_code=404,
+            detail="Ligne de commande introuvable."
+        )
+
+    # 4. Empêcher la suppression de la dernière ligne
+    if len(commande.lignes) <= 1:
+        raise HTTPException(
+            status_code=409,
+            detail="Une commande doit conserver au moins une ligne."
+        )
+
+    # 5. Supprimer la ligne
+    db.delete(ligne)
+    db.flush()
+
+    # 6. Recalculer le sous-total
+    sous_total = sum(
+        ligne.quantite * ligne.prix_unitaire
+        for ligne in commande.lignes
+        if ligne.id != ligne_id
+    )
+
+    # 7. Calculer le nouveau montant total
+    nouveau_montant_total = sous_total - commande.remise
+
+    # 8. Vérifier que le total couvre les paiements déjà effectués
+    if nouveau_montant_total < commande.montant_paye:
+        raise HTTPException(
+            status_code=409,
+            detail="Le nouveau montant ne peut pas être inférieur au montant déjà payé."
+        )
+
+    commande.montant_total = nouveau_montant_total

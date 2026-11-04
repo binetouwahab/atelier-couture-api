@@ -35,7 +35,8 @@ from app.services.commande_service import (
     modifier_commande,
     changer_statut_commande,
     lister_historique_commande,
-    ajouter_ligne_commande
+    ajouter_ligne_commande,
+    supprimer_ligne_commande
 )
 
 router = APIRouter(
@@ -192,3 +193,23 @@ def ajouter_une_ligne(
     db.refresh(nouvelle_ligne)
 
     return nouvelle_ligne
+
+@router.delete(
+    "/commandes/{commande_id}/lignes/{ligne_id}",
+    status_code=204
+)
+def supprimer_une_ligne(
+    commande_id: int,
+    ligne_id: int,
+    db: Session = Depends(get_db),
+    utilisateur=Depends(exiger_roles("accueil"))
+):
+    supprimer_ligne_commande(
+        db=db,
+        commande_id=commande_id,
+        ligne_id=ligne_id
+    )
+
+    db.commit()
+
+    return
