@@ -1,7 +1,7 @@
 from datetime import date
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, model_validator
 
 
 class LivraisonCreate(BaseModel):
@@ -14,7 +14,9 @@ class LivraisonCreate(BaseModel):
     @model_validator(mode="after")
     def verifier_adresse(self):
         if self.mode == "domicile" and not self.adresse:
-            raise ValueError("Une adresse est obligatoire pour une livraison à domicile.")
+            raise ValueError(
+                "Une adresse est obligatoire pour une livraison à domicile."
+            )
         return self
 
 
@@ -24,13 +26,18 @@ class LivraisonUpdate(BaseModel):
     livreur: str | None = None
     date_prevue: date | None = None
     notes: str | None = None
-@model_validator(mode="after")
-def verifier_adresse(self):
-    if self.mode == "domicile" and not self.adresse:
-        raise ValueError(
-            "Une adresse est obligatoire pour une livraison à domicile."
-        )
-    return self
+
+    @model_validator(mode="after")
+    def verifier_adresse(self):
+        if self.mode == "domicile" and not self.adresse:
+            raise ValueError(
+                "Une adresse est obligatoire pour une livraison à domicile."
+            )
+        return self
+
+
+class LivraisonConfirmer(BaseModel):
+    autoriser_solde_impaye: bool = False
 
 
 class LivraisonRead(BaseModel):
@@ -39,7 +46,7 @@ class LivraisonRead(BaseModel):
     mode: Literal["retrait_atelier", "domicile"]
     adresse: str | None
     livreur: str | None
-    date_prevue: date | None
+    date_prevue: date
     date_effective: date | None
     statut: Literal["planifiee", "livree"]
     notes: str | None
