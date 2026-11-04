@@ -1,6 +1,9 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, HTTPException
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.db.session import get_db
 from app.routers import (
     clients,
     mesures,
@@ -62,3 +65,15 @@ app.include_router(
     statistiques.router,
     prefix=settings.API_V1_PREFIX
 )
+
+@app.get("/health", tags=["Santé"])
+def verifier_sante(db: Session = Depends(get_db)):
+    try:
+        db.execute(text("SELECT 1"))
+        return {"status": "ok"}
+
+    except Exception:
+        raise HTTPException(
+            status_code=503,
+            detail="La base de données est indisponible."
+        )
