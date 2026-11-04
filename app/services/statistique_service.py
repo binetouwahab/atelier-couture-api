@@ -2,6 +2,7 @@ from app.models.ligne_commande import LigneCommande
 from app.models.type_vetement import TypeVetement
 from datetime import date
 from fastapi import HTTPException
+from app.models.client import Client
 
 from sqlalchemy import DateTime, cast, func, select
 from sqlalchemy.orm import Session
@@ -289,6 +290,49 @@ def obtenir_statistiques_types_vetement(
                 "type_vetement": resultat.type_vetement,
                 "quantite_vendue": resultat.quantite_vendue,
                 "chiffre_affaires": resultat.chiffre_affaires
+            }
+            for resultat in resultats
+        ]
+    }
+
+def obtenir_top_clients(
+    db: Session,
+    limite: int = 10
+):
+    resultats = db.execute(
+        select(
+            Client.id.label("client_id"),
+            Client.nom,
+            Client.prenom,
+            func.count(Commande.id).label("nb_commandes"),
+            func.sum(Commande.montant_total).label("chiffre_affaires"),
+            func.sum(
+                Commande.montant_total - Commande.montant_paye
+            ).label("solde_du")
+        ).join(
+            Commande,
+            Commande.client_id == Client.id
+        ).where(
+            Commande.statut != "annulee"
+        ).group_by(
+            Client.id,
+            Client.nom,
+            Client.prenom
+        ).order_by(
+            func.sum(Commande.montant_total).desc()
+        ).limit(limite)
+    ).all()
+
+    return {
+        "limite": limite,
+        "items": [
+            {
+                "client_id": resultat.client_id,
+                "nom": resultat.nom,
+                "prenom": resultat.prenom,
+                "nb_commandes": resultat.nb_commandes,
+                "chiffre_affaires": resultat.chiffre_affaires,
+                "solde_du": resultat.solde_du
             }
             for resultat in resultats
         ]
