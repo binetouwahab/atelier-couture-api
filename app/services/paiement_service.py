@@ -97,3 +97,34 @@ def lister_paiements_commande(
     )
 
     return paiements
+
+
+
+def supprimer_paiement(
+    db: Session,
+    paiement_id: int
+):
+    # 1. Vérifier que le paiement existe
+    paiement = db.get(Paiement, paiement_id)
+
+    if paiement is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Paiement introuvable."
+        )
+
+    # 2. Récupérer la commande concernée
+    commande = db.get(Commande, paiement.commande_id)
+
+    # 3. Supprimer le paiement
+    db.delete(paiement)
+    db.flush()
+
+    # 4. Recalculer le montant total payé
+    montant_paye = (
+        db.query(func.coalesce(func.sum(Paiement.montant), 0))
+        .filter(Paiement.commande_id == commande.id)
+        .scalar()
+    )
+
+    commande.montant_paye = montant_paye

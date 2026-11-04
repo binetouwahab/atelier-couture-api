@@ -8,7 +8,8 @@ from app.models.utilisateur import Utilisateur
 from app.schemas.paiement import PaiementCreate, PaiementRead
 from app.services.paiement_service import (
     enregistrer_paiement,
-    lister_paiements_commande
+    lister_paiements_commande,
+    supprimer_paiement
 )
 
 
@@ -55,3 +56,21 @@ def consulter_paiements(
         db=db,
         commande_id=commande_id
     )
+
+
+
+@router.delete(
+    "/paiements/{paiement_id}",
+    status_code=status.HTTP_204_NO_CONTENT
+)
+def annuler_paiement(
+    paiement_id: int,
+    db: Session = Depends(get_db),
+    utilisateur: Utilisateur = Depends(exiger_roles("admin"))
+):
+    supprimer_paiement(
+        db=db,
+        paiement_id=paiement_id
+    )
+
+    db.commit()
