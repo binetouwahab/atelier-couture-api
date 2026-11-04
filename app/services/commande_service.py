@@ -14,8 +14,10 @@ from app.models.historique_statut import HistoriqueStatut
 from app.models.paiement import Paiement
 from app.models.livraison import Livraison
 
-from app.schemas.commande import CommandeCreate
-
+from app.schemas.commande import (
+    CommandeCreate,
+    CommandeUpdate
+)
 
 def creer_commande(
     db: Session,
@@ -350,3 +352,105 @@ def obtenir_commande(db: Session, commande_id: int):
         "solde": solde,
         "en_retard": est_en_retard
     }
+
+    
+def modifier_commande(
+    db: Session,
+    commande_id: int,
+    modifications: dict
+):
+    # 1. Rechercher la commande
+    commande = db.get(Commande, commande_id)
+
+    if commande is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Commande introuvable."
+        )
+
+    # 2. Vérifier si la commande peut être modifiée
+    if commande.statut in ["livree", "annulee"]:
+        raise HTTPException(
+            status_code=409,
+            detail="Cette commande ne peut plus être modifiée."
+        )
+
+    # 3. Vérifier la mensuration, si elle est modifiée
+    if "mesure_id" in modifications:
+        mesure_id = modifications["mesure_id"]
+
+        if mesure_id is not None:
+            mesure = db.get(Mesure, mesure_id)
+
+            if mesure is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Mensuration introuvable."
+                )
+
+            if mesure.client_id != commande.client_id:
+                raise HTTPException(
+                    status_code=422,
+                    detail="Cette mensuration n'appartient pas à ce client."
+                )
+
+        commande.mesure_id = mesure_id
+
+    # 4. Vérifier la date de livraison
+    if "date_livraison_prevue" in modifications:
+        nouvelle_date = modifications["date_livraison_prevue"]
+
+        if nouvelle_date is None:
+            raise HTTPException(
+                status_code=422,
+                detail="La date de livraison est obligatoire."
+            )
+
+        if nouvelle_date < commande.date_commande:
+            raise HTTPException(
+                status_code=422,
+                detail="La date de livraison ne peut pas précéder la date de commande."
+            )
+
+        commande.date_livraison_prevue = nouvelle_date
+
+    # 5. Recalculer le montant de la commande
+    sous_total = sum(
+        ligne.quantite * ligne.prix_unitaire
+        for ligne in commande.lignes
+    )
+
+    nouvelle_remise = modifications.get(
+        "remise",
+        commande.remise
+    )
+
+    if nouvelle_remise is None:
+        raise HTTPException(
+        status_code=422,
+        detail="La remise ne peut pas être vide."
+    )
+
+    if nouvelle_remise > sous_total:
+        raise HTTPException(
+            status_code=422,
+            detail="La remise ne peut pas dépasser le montant des prestations."
+        )
+
+    nouveau_montant_total = sous_total - nouvelle_remise
+
+    # 6. Vérifier que le nouveau total couvre les paiements déjà effectués
+    if nouveau_montant_total < commande.montant_paye:
+        raise HTTPException(
+            status_code=409,
+            detail="Le nouveau montant ne peut pas être inférieur au montant déjà payé."
+        )
+
+    commande.remise = nouvelle_remise
+    commande.montant_total = nouveau_montant_total
+
+    # 7. Modifier les notes, si elles sont fournies
+    if "notes" in modifications:
+        commande.notes = modifications["notes"]
+
+    return commande

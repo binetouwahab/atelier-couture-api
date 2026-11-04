@@ -12,6 +12,7 @@ from app.core.dependencies import (
 
 from app.schemas.commande import (
     CommandeCreate,
+    CommandeUpdate,
     CommandeRead,
     CommandeListeRead,
     CommandeDetailRead
@@ -20,7 +21,8 @@ from app.schemas.commande import (
 from app.services.commande_service import (
     creer_commande,
     lister_commandes,
-    obtenir_commande
+    obtenir_commande,
+    modifier_commande
 )
 
 router = APIRouter(
@@ -91,3 +93,29 @@ def consulter_commande(
         db=db,
         commande_id=commande_id
     )
+
+
+@router.patch(
+    "/commandes/{commande_id}",
+    response_model=CommandeRead
+)
+def modifier_une_commande(
+    commande_id: int,
+    donnees: CommandeUpdate,
+    db: Session = Depends(get_db),
+    utilisateur=Depends(exiger_roles("accueil"))
+):
+    modifications = donnees.model_dump(
+        exclude_unset=True
+    )
+
+    commande_modifiee = modifier_commande(
+        db=db,
+        commande_id=commande_id,
+        modifications=modifications
+    )
+
+    db.commit()
+    db.refresh(commande_modifiee)
+
+    return commande_modifiee
