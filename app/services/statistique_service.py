@@ -337,3 +337,50 @@ def obtenir_top_clients(
             for resultat in resultats
         ]
     }
+
+def obtenir_impayes(
+    db: Session,
+    limit: int = 20,
+    offset: int = 0
+):
+    conditions = (
+        Commande.statut != "annulee",
+        Commande.montant_total > Commande.montant_paye
+    )
+
+    total = db.scalar(
+        select(
+            func.count(Commande.id)
+        ).where(*conditions)
+    )
+
+    resultats = db.execute(
+        select(Commande).where(
+            *conditions
+        ).order_by(
+            Commande.date_livraison_prevue.asc()
+        ).limit(
+            limit
+        ).offset(
+            offset
+        )
+    ).scalars().all()
+
+    return {
+        "items": [
+            {
+                "id": commande.id,
+                "numero": commande.numero,
+                "client_id": commande.client_id,
+                "statut": commande.statut,
+                "date_livraison_prevue": commande.date_livraison_prevue,
+                "montant_total": commande.montant_total,
+                "montant_paye": commande.montant_paye,
+                "solde": commande.montant_total - commande.montant_paye
+            }
+            for commande in resultats
+        ],
+        "total": total,
+        "limit": limit,
+        "offset": offset
+    }

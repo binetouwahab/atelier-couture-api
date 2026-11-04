@@ -15,7 +15,8 @@ from app.services.statistique_service import (
     obtenir_tableau_de_bord,
     obtenir_chiffre_affaires,
     obtenir_statistiques_types_vetement,
-    obtenir_top_clients
+    obtenir_top_clients,
+    obtenir_impayes
 )
 
 
@@ -79,4 +80,20 @@ def consulter_top_clients(
     return obtenir_top_clients(
         db=db,
         limite=limite
+    )
+
+
+@router.get(
+    "/statistiques/impayes"
+)
+def consulter_impayes(
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+    utilisateur=Depends(exiger_roles("admin"))
+):
+    return obtenir_impayes(
+        db=db,
+        limit=limit,
+        offset=offset
     )
