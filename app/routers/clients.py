@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, Query
 from app.core.dependencies import get_utilisateur_connecte
 from sqlalchemy.orm import Session
+from app.core.dependencies import exiger_roles
 from app.services.client_service import (
     creer_client,
     obtenir_client,
@@ -71,13 +72,11 @@ def modifier_un_client(
     return client
 
 
-@router.delete("/{client_id}")
+@router.delete("/{client_id}", status_code=204)
 def supprimer_un_client(
     client_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    utilisateur=Depends(exiger_roles("admin"))
 ):
-    resultat = supprimer_client(db, client_id)
-
+    supprimer_client(db, client_id)
     db.commit()
-
-    return resultat

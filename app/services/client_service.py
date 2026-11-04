@@ -125,18 +125,11 @@ def supprimer_client(db: Session, client_id: int):
             detail="Impossible de supprimer un client qui possède des commandes."
         )
 
-    # Vérifier si le client possède des mensurations
-    mesure_existante = db.query(Mesure).filter(
+    # Supprimer les mensurations du client
+    db.query(Mesure).filter(
         Mesure.client_id == client_id
-    ).first()
+    ).delete(synchronize_session=False)
 
-    if mesure_existante:
-        raise HTTPException(
-            status_code=409,
-            detail="Impossible de supprimer un client qui possède des mensurations."
-        )
-
+    # Supprimer le client
     db.delete(client)
     db.flush()
-
-    return {"message": "Client supprimé avec succès."}
