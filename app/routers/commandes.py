@@ -13,11 +13,15 @@ from app.core.dependencies import (
 from app.schemas.commande import (
     CommandeCreate,
     CommandeRead,
-    CommandeListeRead
+    CommandeListeRead,
+    CommandeDetailRead
 )
 
-from app.services.commande_service import creer_commande, lister_commandes
-
+from app.services.commande_service import (
+    creer_commande,
+    lister_commandes,
+    obtenir_commande
+)
 
 router = APIRouter(
     tags=["Commandes"],
@@ -72,4 +76,18 @@ def afficher_commandes(
         numero=numero,
         limit=limit,
         offset=offset
+    )
+
+
+@router.get(
+    "/commandes/{commande_id}",
+    response_model=CommandeDetailRead
+)
+def consulter_commande(
+    commande_id: int,
+    db: Session = Depends(get_db)
+):
+    return obtenir_commande(
+        db=db,
+        commande_id=commande_id
     )
