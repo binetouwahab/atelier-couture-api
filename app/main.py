@@ -9,7 +9,8 @@ from app.routers import (
     type_vetement,
     commandes,
     paiements,
-    livraisons
+    livraisons,
+    statistiques
 )
 
 app = FastAPI(
@@ -54,5 +55,10 @@ app.include_router(
 
 app.include_router(
     livraisons.router,
+    prefix=settings.API_V1_PREFIX
+)
+
+app.include_router(
+    statistiques.router,
     prefix=settings.API_V1_PREFIX
 )
