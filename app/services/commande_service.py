@@ -11,6 +11,8 @@ from app.models.type_vetement import TypeVetement
 from app.models.commande import Commande
 from app.models.ligne_commande import LigneCommande
 from app.models.historique_statut import HistoriqueStatut
+from app.models.paiement import Paiement
+from app.models.livraison import Livraison
 
 from app.schemas.commande import CommandeCreate
 
@@ -290,3 +292,61 @@ def lister_commandes(
         "offset": offset
     }
 
+def obtenir_commande(db: Session, commande_id: int):
+
+    # 1. Rechercher la commande
+    commande = db.get(Commande, commande_id)
+
+    if commande is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Commande introuvable."
+        )
+
+    # 2. Récupérer les paiements de cette commande
+    paiements = (
+        db.query(Paiement)
+        .filter(Paiement.commande_id == commande_id)
+        .order_by(Paiement.date_paiement.desc())
+        .all()
+    )
+
+    # 3. Récupérer la livraison, si elle existe
+    livraison = (
+        db.query(Livraison)
+        .filter(Livraison.commande_id == commande_id)
+        .first()
+    )
+
+    # 4. Calculer le solde restant
+    solde = commande.montant_total - commande.montant_paye
+
+    # 5. Vérifier si la commande est en retard
+    est_en_retard = (
+        commande.date_livraison_prevue < date.today()
+        and commande.statut not in ["livree", "annulee"]
+    )
+
+    # 6. Préparer les informations détaillées
+    return {
+        "id": commande.id,
+        "numero": commande.numero,
+        "client_id": commande.client_id,
+        "mesure_id": commande.mesure_id,
+        "statut": commande.statut,
+        "date_commande": commande.date_commande,
+        "date_livraison_prevue": commande.date_livraison_prevue,
+        "date_livraison_reelle": commande.date_livraison_reelle,
+        "remise": commande.remise,
+        "montant_total": commande.montant_total,
+        "montant_paye": commande.montant_paye,
+        "notes": commande.notes,
+        "cree_par_id": commande.cree_par_id,
+        "created_at": commande.created_at,
+        "updated_at": commande.updated_at,
+        "lignes": commande.lignes,
+        "paiements": paiements,
+        "livraison": livraison,
+        "solde": solde,
+        "en_retard": est_en_retard
+    }
