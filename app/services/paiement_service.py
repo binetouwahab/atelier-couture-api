@@ -72,3 +72,28 @@ def enregistrer_paiement(
     commande.montant_paye = montant_paye
 
     return paiement
+
+
+
+def lister_paiements_commande(
+    db: Session,
+    commande_id: int
+):
+    # 1. Vérifier que la commande existe
+    commande = db.get(Commande, commande_id)
+
+    if commande is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Commande introuvable."
+        )
+
+    # 2. Récupérer les paiements dans leur ordre de saisie
+    paiements = (
+        db.query(Paiement)
+        .filter(Paiement.commande_id == commande_id)
+        .order_by(Paiement.created_at.asc(), Paiement.id.asc())
+        .all()
+    )
+
+    return paiements

@@ -6,7 +6,10 @@ from app.core.dependencies import get_utilisateur_connecte, exiger_roles
 from app.db.session import get_db
 from app.models.utilisateur import Utilisateur
 from app.schemas.paiement import PaiementCreate, PaiementRead
-from app.services.paiement_service import enregistrer_paiement
+from app.services.paiement_service import (
+    enregistrer_paiement,
+    lister_paiements_commande
+)
 
 
 router = APIRouter(
@@ -37,3 +40,18 @@ def creer_paiement(
     db.refresh(paiement)
 
     return paiement
+
+
+
+@router.get(
+    "/commandes/{commande_id}/paiements",
+    response_model=list[PaiementRead]
+)
+def consulter_paiements(
+    commande_id: int,
+    db: Session = Depends(get_db)
+):
+    return lister_paiements_commande(
+        db=db,
+        commande_id=commande_id
+    )
