@@ -472,3 +472,51 @@ def test_refuser_annulation_commande_par_un_tailleur(db):
     assert erreur.value.detail == (
         "Un tailleur ne peut pas annuler une commande."
     )
+
+
+
+def test_autoriser_transition_statut_valide(db):
+    administrateur = Utilisateur(
+        email="admin_transition@test.local",
+        nom_complet="Administrateur Test",
+        mot_de_passe_hash="hash_test",
+        role="admin",
+        actif=True
+    )
+
+    client = Client(
+        nom="Diop",
+        prenom="Awa",
+        telephone="763333340"
+    )
+
+    db.add_all([administrateur, client])
+    db.commit()
+
+    commande = Commande(
+        numero=f"CMD-{date.today().year}-00002",
+        client_id=client.id,
+        statut="en_attente",
+        date_commande=date.today(),
+        date_livraison_prevue=date.today() + timedelta(days=10),
+        remise=0,
+        montant_total=35000,
+        montant_paye=0,
+        cree_par_id=administrateur.id
+    )
+
+    db.add(commande)
+    db.commit()
+
+    donnees = ChangementStatut(
+        nouveau_statut="en_coupe"
+    )
+
+    resultat = changer_statut_commande(
+        db=db,
+        commande_id=commande.id,
+        donnees=donnees,
+        utilisateur=administrateur
+    )
+
+    assert resultat.statut == "en_coupe"
