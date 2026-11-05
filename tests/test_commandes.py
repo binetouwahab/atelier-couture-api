@@ -4,9 +4,14 @@ from fastapi import HTTPException
 from app.models.type_vetement import TypeVetement
 from datetime import date, timedelta
 from app.models.historique_statut import HistoriqueStatut
+from app.schemas.historique_statut import ChangementStatut
+from app.models.commande import Commande
 
 from app.schemas.commande import CommandeCreate, LigneCommandeCreate
-from app.services.commande_service import creer_commande
+from app.services.commande_service import (
+    creer_commande,
+    changer_statut_commande,
+)
 from app.models.client import Client
 from app.models.mesure import Mesure
 from app.models.utilisateur import Utilisateur
@@ -360,3 +365,58 @@ def test_creer_commande_avec_succes(db):
     assert historique.ancien_statut is None
     assert historique.nouveau_statut == "en_attente"
     assert historique.utilisateur_id == utilisateur.id
+
+
+
+def test_refuser_transition_statut_non_autorisee(db):
+    utilisateur = Utilisateur(
+        email="admin_statut@test.local",
+        nom_complet="Administrateur Test",
+        mot_de_passe_hash="hash_test",
+        role="admin",
+        actif=True
+    )
+
+    client = Client(
+        nom="Fall",
+        prenom="Moussa",
+        telephone="763333338"
+    )
+
+    commande = Commande(
+        numero=f"CMD-{date.today().year}-00001",
+        client_id=1,
+        statut="en_attente",
+        date_commande=date.today(),
+        date_livraison_prevue=date.today() + timedelta(days=10),
+        remise=0,
+        montant_total=35000,
+        montant_paye=0,
+        cree_par_id=1
+    )
+
+    db.add_all([utilisateur, client])
+    db.commit()
+
+    commande.client_id = client.id
+    commande.cree_par_id = utilisateur.id
+
+    db.add(commande)
+    db.commit()
+
+    donnees = ChangementStatut(
+        nouveau_statut="terminee"
+    )
+
+    with pytest.raises(HTTPException) as erreur:
+        changer_statut_commande(
+            db=db,
+            commande_id=commande.id,
+            donnees=donnees,
+            utilisateur=utilisateur
+        )
+
+    assert erreur.value.status_code == 409
+    assert erreur.value.detail == (
+        "Ce changement de statut n'est pas autorisé."
+    )
