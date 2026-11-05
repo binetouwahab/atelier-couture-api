@@ -136,3 +136,49 @@ def test_refuser_commande_avec_prestation_inexistante(db):
 
     assert erreur.value.status_code == 404
     assert erreur.value.detail == "Prestation introuvable."
+
+
+
+def test_refuser_commande_avec_prestation_desactivee(db):
+    utilisateur = Utilisateur(
+        email="admin_desactive@test.local",
+        nom_complet="Administrateur Test",
+        mot_de_passe_hash="hash_test",
+        role="admin",
+        actif=True
+    )
+    client = Client(
+        nom="Fall",
+        prenom="Moussa",
+        telephone="763333334"
+    )
+    prestation = TypeVetement(
+        nom="Boubou test",
+        description="Prestation désactivée",
+        prix_base=35000,
+        delai_jours=10,
+        actif=False
+    )
+
+    db.add_all([utilisateur, client, prestation])
+    db.commit()
+
+    donnees = CommandeCreate(
+        client_id=client.id,
+        lignes=[
+            LigneCommandeCreate(
+                type_vetement_id=prestation.id,
+                quantite=1
+            )
+        ]
+    )
+
+    with pytest.raises(HTTPException) as erreur:
+        creer_commande(
+            db=db,
+            donnees=donnees,
+            cree_par_id=utilisateur.id
+        )
+
+    assert erreur.value.status_code == 422
+    assert erreur.value.detail == "Cette prestation n'est plus disponible."
