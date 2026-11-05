@@ -3,6 +3,7 @@ import pytest
 from fastapi import HTTPException
 from app.models.type_vetement import TypeVetement
 from datetime import date, timedelta
+from app.models.historique_statut import HistoriqueStatut
 
 from app.schemas.commande import CommandeCreate, LigneCommandeCreate
 from app.services.commande_service import creer_commande
@@ -285,3 +286,77 @@ def test_refuser_date_livraison_anterieure_a_la_commande(db):
     assert erreur.value.detail == (
         "La date de livraison ne peut pas précéder la date de commande."
     )
+
+
+def test_creer_commande_avec_succes(db):
+    utilisateur = Utilisateur(
+        email="admin_succes@test.local",
+        nom_complet="Administrateur Test",
+        mot_de_passe_hash="hash_test",
+        role="admin",
+        actif=True
+    )
+
+    client = Client(
+        nom="Fall",
+        prenom="Moussa",
+        telephone="763333337"
+    )
+
+    prestation = TypeVetement(
+        nom="Boubou succes test",
+        description="Boubou sur mesure",
+        prix_base=35000,
+        delai_jours=10,
+        actif=True
+    )
+
+    db.add_all([utilisateur, client, prestation])
+    db.commit()
+
+    donnees = CommandeCreate(
+        client_id=client.id,
+        lignes=[
+            LigneCommandeCreate(
+                type_vetement_id=prestation.id,
+                quantite=1
+            )
+        ]
+    )
+
+    commande = creer_commande(
+        db=db,
+        donnees=donnees,
+        cree_par_id=utilisateur.id
+    )
+
+    # Vérifier le numéro de commande
+    assert commande.numero == f"CMD-{date.today().year}-00001"
+
+    # Vérifier le statut initial
+    assert commande.statut == "en_attente"
+
+    # Vérifier les montants
+    assert commande.montant_total == 35000
+    assert commande.montant_paye == 0
+    assert commande.remise == 0
+
+    # Vérifier la ligne de commande
+    assert len(commande.lignes) == 1
+    assert commande.lignes[0].prix_unitaire == 35000
+    assert commande.lignes[0].quantite == 1
+
+    # Vérifier la date de livraison calculée
+    assert commande.date_livraison_prevue == (
+        date.today() + timedelta(days=10)
+    )
+
+    # Vérifier l'historique initial
+    historique = db.query(HistoriqueStatut).filter(
+        HistoriqueStatut.commande_id == commande.id
+    ).first()
+
+    assert historique is not None
+    assert historique.ancien_statut is None
+    assert historique.nouveau_statut == "en_attente"
+    assert historique.utilisateur_id == utilisateur.id
