@@ -110,3 +110,25 @@ def test_refuser_suppression_client_avec_commande(db):
         "Impossible de supprimer un client qui possède des commandes."
     )
 
+def test_supprimer_client_sans_commande(db):
+    # Créer un client sans commande
+    client = Client(
+        nom="Fall",
+        prenom="Moussa",
+        telephone="761234567"
+    )
+
+    db.add(client)
+    db.commit()
+
+    client_id = client.id
+
+    # Supprimer le client
+    supprimer_client(db, client_id)
+    db.commit()
+
+    # Vérifier que le client n'existe plus
+    client_supprime = db.get(Client, client_id)
+
+    assert client_supprime is None
+
