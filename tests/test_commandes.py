@@ -182,3 +182,54 @@ def test_refuser_commande_avec_prestation_desactivee(db):
 
     assert erreur.value.status_code == 422
     assert erreur.value.detail == "Cette prestation n'est plus disponible."
+
+
+
+def test_refuser_remise_superieure_au_montant_des_prestations(db):
+    utilisateur = Utilisateur(
+        email="admin_remise@test.local",
+        nom_complet="Administrateur Test",
+        mot_de_passe_hash="hash_test",
+        role="admin",
+        actif=True
+    )
+
+    client = Client(
+        nom="Fall",
+        prenom="Moussa",
+        telephone="763333335"
+    )
+
+    prestation = TypeVetement(
+        nom="Boubou remise test",
+        description="Boubou sur mesure",
+        prix_base=35000,
+        delai_jours=10,
+        actif=True
+    )
+
+    db.add_all([utilisateur, client, prestation])
+    db.commit()
+
+    donnees = CommandeCreate(
+        client_id=client.id,
+        remise=40000,
+        lignes=[
+            LigneCommandeCreate(
+                type_vetement_id=prestation.id,
+                quantite=1
+            )
+        ]
+    )
+
+    with pytest.raises(HTTPException) as erreur:
+        creer_commande(
+            db=db,
+            donnees=donnees,
+            cree_par_id=utilisateur.id
+        )
+
+    assert erreur.value.status_code == 422
+    assert erreur.value.detail == (
+        "La remise ne peut pas dépasser le montant des prestations."
+    )
