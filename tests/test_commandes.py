@@ -420,3 +420,55 @@ def test_refuser_transition_statut_non_autorisee(db):
     assert erreur.value.detail == (
         "Ce changement de statut n'est pas autorisé."
     )
+
+
+
+def test_refuser_annulation_commande_par_un_tailleur(db):
+    tailleur = Utilisateur(
+        email="tailleur_statut@test.local",
+        nom_complet="Tailleur Test",
+        mot_de_passe_hash="hash_test",
+        role="tailleur",
+        actif=True
+    )
+
+    client = Client(
+        nom="Fall",
+        prenom="Moussa",
+        telephone="763333339"
+    )
+
+    db.add_all([tailleur, client])
+    db.commit()
+
+    commande = Commande(
+        numero=f"CMD-{date.today().year}-00001",
+        client_id=client.id,
+        statut="en_attente",
+        date_commande=date.today(),
+        date_livraison_prevue=date.today() + timedelta(days=10),
+        remise=0,
+        montant_total=35000,
+        montant_paye=0,
+        cree_par_id=tailleur.id
+    )
+
+    db.add(commande)
+    db.commit()
+
+    donnees = ChangementStatut(
+        nouveau_statut="annulee"
+    )
+
+    with pytest.raises(HTTPException) as erreur:
+        changer_statut_commande(
+            db=db,
+            commande_id=commande.id,
+            donnees=donnees,
+            utilisateur=tailleur
+        )
+
+    assert erreur.value.status_code == 403
+    assert erreur.value.detail == (
+        "Un tailleur ne peut pas annuler une commande."
+    )
