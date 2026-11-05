@@ -2,6 +2,7 @@
 import pytest
 from fastapi import HTTPException
 from app.models.type_vetement import TypeVetement
+from datetime import date, timedelta
 
 from app.schemas.commande import CommandeCreate, LigneCommandeCreate
 from app.services.commande_service import creer_commande
@@ -232,4 +233,55 @@ def test_refuser_remise_superieure_au_montant_des_prestations(db):
     assert erreur.value.status_code == 422
     assert erreur.value.detail == (
         "La remise ne peut pas dépasser le montant des prestations."
+    )
+
+
+
+def test_refuser_date_livraison_anterieure_a_la_commande(db):
+    utilisateur = Utilisateur(
+        email="admin_date@test.local",
+        nom_complet="Administrateur Test",
+        mot_de_passe_hash="hash_test",
+        role="admin",
+        actif=True
+    )
+
+    client = Client(
+        nom="Fall",
+        prenom="Moussa",
+        telephone="763333336"
+    )
+
+    prestation = TypeVetement(
+        nom="Boubou date test",
+        description="Boubou sur mesure",
+        prix_base=35000,
+        delai_jours=10,
+        actif=True
+    )
+
+    db.add_all([utilisateur, client, prestation])
+    db.commit()
+
+    donnees = CommandeCreate(
+        client_id=client.id,
+        date_livraison_prevue=date.today() - timedelta(days=1),
+        lignes=[
+            LigneCommandeCreate(
+                type_vetement_id=prestation.id,
+                quantite=1
+            )
+        ]
+    )
+
+    with pytest.raises(HTTPException) as erreur:
+        creer_commande(
+            db=db,
+            donnees=donnees,
+            cree_par_id=utilisateur.id
+        )
+
+    assert erreur.value.status_code == 422
+    assert erreur.value.detail == (
+        "La date de livraison ne peut pas précéder la date de commande."
     )
