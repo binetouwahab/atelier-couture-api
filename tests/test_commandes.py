@@ -1,6 +1,7 @@
 
 import pytest
 from fastapi import HTTPException
+from app.models.type_vetement import TypeVetement
 
 from app.schemas.commande import CommandeCreate, LigneCommandeCreate
 from app.services.commande_service import creer_commande
@@ -92,3 +93,46 @@ def test_refuser_mensuration_appartenant_a_un_autre_client(db):
     assert erreur.value.detail == (
         "Cette mensuration n'appartient pas à ce client."
     )
+
+
+def test_refuser_commande_avec_prestation_inexistante(db):
+    # Créer un utilisateur
+    utilisateur = Utilisateur(
+        email="admin_prestation@test.local",
+        nom_complet="Administrateur Test",
+        mot_de_passe_hash="hash_test",
+        role="admin",
+        actif=True
+    )
+    db.add(utilisateur)
+
+    # Créer un client
+    client = Client(
+        nom="Fall",
+        prenom="Moussa",
+        telephone="763333333"
+    )
+    db.add(client)
+    db.commit()
+
+    # Préparer une commande avec un type de vêtement inexistant
+    donnees = CommandeCreate(
+        client_id=client.id,
+        lignes=[
+            LigneCommandeCreate(
+                type_vetement_id=9999,
+                quantite=1
+            )
+        ]
+    )
+
+    # Vérifier que la prestation est introuvable
+    with pytest.raises(HTTPException) as erreur:
+        creer_commande(
+            db=db,
+            donnees=donnees,
+            cree_par_id=utilisateur.id
+        )
+
+    assert erreur.value.status_code == 404
+    assert erreur.value.detail == "Prestation introuvable."
